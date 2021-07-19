@@ -1,13 +1,13 @@
 package main
 
 import (
+	"calendar/server"
 	"calendar/storage"
 	"log"
 	"net/http"
-	"calendar/server"
 )
 
 func main() {
-	server := &server.EventServer{storage.NewEventStorage()}
-	log.Fatal(http.ListenAndServe(":5000", server))
+	eventServer := server.NewEventServer(storage.NewEventStorage())
+	log.Fatal(http.ListenAndServe(":5000", eventServer))
 }
