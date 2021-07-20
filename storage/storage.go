@@ -53,7 +53,7 @@ func (i *InMemoryEventStorage) GetEvents(ef event.EventFilter) []event.Event {
 func (i *InMemoryEventStorage) Save(ev event.Event) {
 	i.lock.Lock()
 	defer i.lock.Unlock()
-	i.store[ev.Id] = ev
+	i.store[ev.ID] = ev
 
 }
 
@@ -66,6 +66,8 @@ func (i *InMemoryEventStorage) Delete(id int) {
 
 // IsExist check if event already in store
 func (i *InMemoryEventStorage) IsExist(id int) bool {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
 	_, exist := i.store[id]
 	return exist
 }
