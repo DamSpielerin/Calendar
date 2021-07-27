@@ -40,7 +40,7 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("%#v", r.URL.Query())
 		err := decoder.Decode(&filter, r.URL.Query())
 		if err != nil {
-			log.Println("Error in GET parameters : ", err)
+			log.Fatal("Error in GET parameters : ", err)
 		} else {
 			log.Println("GET parameters : ", filter)
 		}
@@ -51,8 +51,7 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInsufficientStorage)
 		}
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Wrong Method Used!"))
+		http.Error(w, "Wrong Method Used!", http.StatusBadRequest)
 	}
 
 }
@@ -75,23 +74,18 @@ func (es *EventServer) ServeEvent(w http.ResponseWriter, r *http.Request) {
 func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id int) {
 	exists := es.Store.IsExist(id)
 	if (exists && r.Method == http.MethodPost) || (!exists && r.Method == http.MethodPut) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Wrong Method Used!"))
+		http.Error(w, "Wrong method type", http.StatusBadRequest)
 		return
 	}
 	var ev event.Event
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Wrong Entity!"))
-		fmt.Println(err)
+		http.Error(w, "Wrong body", http.StatusBadRequest)
 		return
 	}
 	err = json.Unmarshal(body, &ev)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Wrong Entity!"))
-		fmt.Println(err)
+		http.Error(w, "Wrong entity", http.StatusBadRequest)
 		return
 	}
 	es.Store.Save(ev)
@@ -101,7 +95,6 @@ func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id int) 
 	} else {
 		w.WriteHeader(http.StatusNotAcceptable)
 	}
-
 }
 
 func (es *EventServer) GetEvent(w http.ResponseWriter, id int) {
@@ -112,11 +105,14 @@ func (es *EventServer) GetEvent(w http.ResponseWriter, id int) {
 	}
 	fmt.Printf(" get event by id :%#v\n", ev.DateTime)
 	w.Header().Set("content-type", jsonContentType)
-	json, err := json.Marshal(&ev)
+	jsonEvent, err := json.Marshal(&ev)
 	if err != nil {
 		w.WriteHeader(http.StatusInsufficientStorage)
 	}
-	w.Write(json)
+	_, err = w.Write(jsonEvent)
+	if err != nil {
+		http.Error(w, "Wrong json response", http.StatusInternalServerError)
+	}
 }
 
 func (es *EventServer) DeleteEvent(w http.ResponseWriter, id int) {

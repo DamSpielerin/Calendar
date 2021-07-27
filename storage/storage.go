@@ -2,8 +2,12 @@ package storage
 
 import (
 	"calendar/event"
+	"log"
 	"sync"
+	"time"
 )
+
+const shortForm = "2006-01-02"
 
 // EventStore stores information about events
 type EventStore interface {
@@ -14,7 +18,7 @@ type EventStore interface {
 	Save(ev event.Event)
 }
 
-// NewEventStorage initialises an empty player store
+// NewEventStorage initialises an empty store
 func NewEventStorage() *InMemoryEventStorage {
 	return &InMemoryEventStorage{map[int]event.Event{}, sync.RWMutex{}}
 }
@@ -35,12 +39,49 @@ func (i *InMemoryEventStorage) GetEventById(id int) event.Event {
 
 // GetEvents return all events as slice
 func (i *InMemoryEventStorage) GetEvents(ef event.EventFilter) []event.Event {
+	var dateFrom, dateTo time.Time
+	var timeFrom, timeTo event.HoursMin
+
 	i.lock.RLock()
 	defer i.lock.RUnlock()
 	events := make([]event.Event, len(i.store), len(i.store))
+
+	loc, err := time.LoadLocation(ef.Timezone)
+	if err != nil || loc == nil {
+		loc, _ = time.LoadLocation("UTC")
+	}
+
+	if ef.DateFrom != "" {
+		dateFrom, err = time.ParseInLocation(shortForm, ef.DateFrom, loc)
+		if err != nil {
+			log.Fatal("Wrong date from ", ef.DateFrom, err)
+		}
+	}
+
+	if ef.DateTo != "" {
+		dateTo, err = time.ParseInLocation(shortForm, ef.DateTo, loc)
+		if err != nil {
+			log.Fatal("Wrong date to ", ef.DateTo, err)
+		}
+	}
+
+	if ef.TimeFrom != "" {
+		timeFrom, err = event.NewHoursMin(ef.TimeFrom)
+		if err != nil {
+			log.Fatal("Wrong time from ", ef.TimeFrom, err)
+		}
+	}
+
+	if ef.TimeTo != "" {
+		timeTo, err = event.NewHoursMin(ef.TimeTo)
+		if err != nil {
+			log.Fatal("Wrong time to ", ef.TimeTo, err)
+		}
+	}
+
 	idx := 0
 	for _, ev := range i.store {
-		if ef.IsFiltered(&ev) {
+		if event.IsFiltered(&ev, ef, loc, &dateFrom, &dateTo, &timeFrom, &timeTo) {
 			events[idx] = ev
 			idx++
 		}

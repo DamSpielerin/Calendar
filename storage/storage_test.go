@@ -86,10 +86,10 @@ func GetStubEventById(i int) event.Event {
 		ID:          i,
 		Title:       "Test title " + string(rune(i)),
 		Description: "Some descr",
-		DateTime:    time.Date(2021, time.August, i, i, i, i, i, loc),
+		DateTime:    time.Date(2021, time.August, i, i, i, i, 0, loc),
 		Timezone:    loc,
 		Duration:    time.Hour,
-		Notes:       &[]string{"test", "test2"},
+		Notes:       []string{"test", "test2"},
 		Unmarshaler: nil,
 	}
 }
