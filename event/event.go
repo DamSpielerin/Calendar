@@ -1,6 +1,7 @@
 package event
 
 import (
+	"calendar/user"
 	"encoding/json"
 	"time"
 )
@@ -13,6 +14,7 @@ type Event struct {
 	Timezone    *time.Location `json:"timezone,omitempty"`
 	Duration    time.Duration  `json:"duration"`
 	Notes       []string       `json:"notes,omitempty"`
+	ownerUser   *user.User
 	Unmarshaler
 }
 type EventHelper struct {

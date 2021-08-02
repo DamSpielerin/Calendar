@@ -40,6 +40,7 @@ func TestIsExist(t *testing.T) {
 		})
 	}
 }
+
 func TestGetEventById(t *testing.T) {
 	store := NewStubEventStorage()
 	type args struct {
