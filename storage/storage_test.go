@@ -10,7 +10,7 @@ import (
 
 type StubEventStorage struct {
 	store map[int]event.Event
-	lock  sync.RWMutex
+	lock  *sync.RWMutex
 }
 
 func TestIsExist(t *testing.T) {
@@ -70,7 +70,7 @@ func TestGetEventById(t *testing.T) {
 }
 
 func NewStubEventStorage() *StubEventStorage {
-	return &StubEventStorage{FillNewStubEvents(), sync.RWMutex{}}
+	return &StubEventStorage{FillNewStubEvents(), &sync.RWMutex{}}
 }
 
 func FillNewStubEvents() map[int]event.Event {

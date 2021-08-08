@@ -3,23 +3,11 @@ package user
 import "github.com/dgrijalva/jwt-go"
 
 type User struct {
-	ID       int    `json:"id"`
+	ID       int    `json:"id,omitempty"`
 	Login    string `json:"login"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Timezone string `json:"timezone"`
-}
-
-type JwtToken struct {
-	Token string `json:"token"`
-}
-
-type Exception struct {
-	Message string `json:"message"`
-}
-type AccessDetails struct {
-	AccessUuid string
-	UserId     int
+	Email    string `json:"email,omitempty"`
+	Password string `json:"password,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // Create the JWT key used to create the signature
@@ -33,7 +21,6 @@ type Credentials struct {
 }
 
 // Create a struct that will be encoded to a JWT.
-// We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
 	Username string `json:"username"`
 	Timezone string `json:"timezone"`

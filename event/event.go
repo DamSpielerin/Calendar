@@ -2,6 +2,7 @@ package event
 
 import (
 	"calendar/user"
+	"context"
 	"encoding/json"
 	"time"
 )
@@ -62,4 +63,18 @@ func (ev *Event) UnmarshalJSON(j []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (ev *Event) ChangeTimezoneFromContext(ctx context.Context) {
+	if v := ctx.Value("timezone"); v != nil {
+		var loc, err = time.LoadLocation(v.(string))
+		if err != nil || loc == nil {
+			panic("wrong timezone from context")
+		}
+		ev.ChangeTimezone(loc)
+	}
+}
+func (ev *Event) ChangeTimezone(loc *time.Location) {
+	ev.Timezone = loc
+	ev.DateTime = ev.DateTime.In(loc)
 }

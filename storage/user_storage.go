@@ -3,6 +3,7 @@ package storage
 import (
 	"calendar/user"
 	"sync"
+	"time"
 )
 
 type UserStorage struct {
@@ -11,14 +12,20 @@ type UserStorage struct {
 }
 
 var Users = UserStorage{
-	map[string]user.User{"User1": {
-		1,
-		"User1",
-		"user@ukr.net",
-		"password1",
-		"America/New_York",
-	}},
-	sync.RWMutex{},
+	store: map[string]user.User{
+		"User1": {
+			ID:       1,
+			Login:    "User1",
+			Email:    "user@ukr.net",
+			Password: "password1",
+			Timezone: "Europe/Athens",
+		}, "User2": {
+			ID:       2,
+			Login:    "User2",
+			Email:    "user2@ukr.net",
+			Password: "password2",
+			Timezone: "Europe/Riga",
+		}},
 }
 
 // GetUserByLogin get user entity from storage by login
@@ -35,4 +42,17 @@ func (us *UserStorage) IsExist(login string) bool {
 	defer us.lock.RUnlock()
 	_, exist := us.store[login]
 	return exist
+}
+
+// UpdateTimezone
+func (us *UserStorage) UpdateTimezone(login string, timezone string) (err error) {
+	us.lock.Lock()
+	defer us.lock.Unlock()
+	if userEntity, exist := us.store[login]; exist == true {
+		if _, err = time.LoadLocation(timezone); err == nil {
+			userEntity.Timezone = timezone
+			us.store[login] = userEntity
+		}
+	}
+	return
 }
