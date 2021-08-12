@@ -20,7 +20,7 @@ type StubEventStorage struct {
 }
 
 func (s *StubEventStorage) GetEvents(ef event.EventFilter) []event.Event {
-	evs := make([]event.Event, len(s.store), len(s.store))
+	evs := make([]event.Event, len(s.store))
 	idx := 0
 	for _, ev := range s.store {
 		evs[idx] = ev
@@ -39,6 +39,7 @@ func (s *StubEventStorage) IsExist(id int) bool {
 }
 
 func (s *StubEventStorage) Delete(id int) {
+	delete(s.store, id)
 }
 
 func (s *StubEventStorage) Save(ev event.Event) {
@@ -86,11 +87,11 @@ func DecodeEventsFromResponse(t *testing.T, body *bytes.Buffer) (evs []event.Eve
 	return
 }
 func newGetEventsRequest() *http.Request {
-	req, _ := http.NewRequest(http.MethodGet, "/events/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/events/", nil)
 	return req
 }
 func newGetEventByIdRequest(id string) *http.Request {
-	req, _ := http.NewRequest(http.MethodGet, "/event/"+id, nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/event/"+id, nil)
 	return req
 }
 func NewStubEventStorage() *StubEventStorage {

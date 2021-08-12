@@ -2,6 +2,8 @@ package storage
 
 import (
 	"calendar/event"
+	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -11,8 +13,8 @@ const shortForm = "2006-01-02"
 
 // EventStore stores information about events
 type EventStore interface {
-	GetEvents(ef event.EventFilter) []event.Event
-	GetEventById(id int) event.Event
+	GetEvents(ctx context.Context, ef event.EventFilter) []event.Event
+	GetEventById(ctx context.Context, id int) event.Event
 	IsExist(id int) bool
 	Delete(id int)
 	Save(ev event.Event)
@@ -20,33 +22,44 @@ type EventStore interface {
 
 // NewEventStorage initialises an empty store
 func NewEventStorage() *InMemoryEventStorage {
-	return &InMemoryEventStorage{map[int]event.Event{}, sync.RWMutex{}}
+	return &InMemoryEventStorage{map[int]event.Event{}, &sync.RWMutex{}}
 }
 
 // InMemoryEventStorage collects events to map by id
 type InMemoryEventStorage struct {
 	store map[int]event.Event
 	// A mutex is used to synchronize read/write access to the map
-	lock sync.RWMutex
+	lock *sync.RWMutex
 }
 
 // GetEventById return event by id
-func (i *InMemoryEventStorage) GetEventById(id int) event.Event {
+func (i *InMemoryEventStorage) GetEventById(ctx context.Context, id int) event.Event {
 	i.lock.RLock()
 	defer i.lock.RUnlock()
-	return i.store[id]
+	ev := i.store[id]
+	fmt.Println(ev)
+	ev.ChangeTimezoneFromContext(ctx)
+	fmt.Println(ev)
+	return ev
 }
 
 // GetEvents return all events as slice
-func (i *InMemoryEventStorage) GetEvents(ef event.EventFilter) []event.Event {
+func (i *InMemoryEventStorage) GetEvents(ctx context.Context, ef event.EventFilter) []event.Event {
 	var dateFrom, dateTo time.Time
 	var timeFrom, timeTo event.HoursMin
 
 	i.lock.RLock()
 	defer i.lock.RUnlock()
-	events := make([]event.Event, len(i.store), len(i.store))
+	events := make([]event.Event, len(i.store))
 
-	loc, err := time.LoadLocation(ef.Timezone)
+	var loc *time.Location
+	var err error
+	if ef.Timezone != "" {
+		loc, err = time.LoadLocation(ef.Timezone)
+	} else if v := ctx.Value("timezone"); v != nil {
+		loc, err = time.LoadLocation(v.(string))
+	}
+
 	if err != nil || loc == nil {
 		loc, _ = time.LoadLocation("UTC")
 	}

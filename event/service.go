@@ -12,12 +12,12 @@ const (
 )
 
 type EventFilter struct {
-	Timezone string `schema:"timezone"` // Location string "America/Chicago", "Europe/Riga"
-	DateFrom string `schema:"dateFrom"` // format "2006-01-02"
-	DateTo   string `schema:"dateTo"`   // format "2006-01-03"
-	TimeFrom string `schema:"timeFrom"` // format "05:30"
-	TimeTo   string `schema:"timeTo"`   // format "06:30"
-	Title    string `schema:"title"`    // filter if title of event contains this string
+	Timezone string `schema:"timezone,omitempty"` // Location string "America/Chicago", "Europe/Riga"
+	DateFrom string `schema:"dateFrom"`           // format "2006-01-02"
+	DateTo   string `schema:"dateTo"`             // format "2006-01-03"
+	TimeFrom string `schema:"timeFrom"`           // format "05:30"
+	TimeTo   string `schema:"timeTo"`             // format "06:30"
+	Title    string `schema:"title"`              // filter if title of event contains this string
 }
 
 type HoursMin struct {
@@ -54,7 +54,7 @@ func IsFiltered(event *Event, ef EventFilter, loc *time.Location, dateFrom *time
 		return false
 	}
 
-	if ef.TimeFrom != "" && !(timeFrom.H < et.Hour() || (timeFrom.H == et.Hour() && timeFrom.M >= et.Minute())) {
+	if ef.TimeFrom != "" && !(timeFrom.H < et.Hour() || (timeFrom.H == et.Hour() && timeFrom.M <= et.Minute())) {
 		return false
 	}
 
@@ -62,5 +62,6 @@ func IsFiltered(event *Event, ef EventFilter, loc *time.Location, dateFrom *time
 		return false
 	}
 
+	event.ChangeTimezone(loc)
 	return true
 }
