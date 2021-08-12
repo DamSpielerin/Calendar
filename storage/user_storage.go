@@ -56,3 +56,10 @@ func (us *UserStorage) UpdateTimezone(login string, timezone string) (err error)
 	}
 	return
 }
+
+// Count return number of users in storage
+func (us *UserStorage) Count() int {
+	us.lock.RLock()
+	defer us.lock.RUnlock()
+	return len(us.store)
+}

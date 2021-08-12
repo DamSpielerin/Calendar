@@ -18,6 +18,7 @@ type EventStore interface {
 	IsExist(id int) bool
 	Delete(id int)
 	Save(ev event.Event)
+	Count() int
 }
 
 // NewEventStorage initialises an empty store
@@ -124,4 +125,11 @@ func (i *InMemoryEventStorage) IsExist(id int) bool {
 	defer i.lock.RUnlock()
 	_, exist := i.store[id]
 	return exist
+}
+
+// Count return number of events in storage
+func (i *InMemoryEventStorage) Count() int {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+	return len(i.store)
 }

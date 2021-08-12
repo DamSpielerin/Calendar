@@ -13,7 +13,11 @@ var once sync.Once
 func main() {
 	onceBody := func() {
 		eventServer := server.NewEventServer(storage.NewEventStorage())
-		log.Fatal(http.ListenAndServe(":5000", eventServer))
+		metricServer := server.NewMetricServer(storage.NewEventStorage())
+		go func() {
+			log.Fatal(http.ListenAndServe(":5000", eventServer))
+		}()
+		log.Fatal(http.ListenAndServe(":5050", metricServer))
 	}
 	once.Do(onceBody)
 }
