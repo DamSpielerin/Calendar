@@ -21,7 +21,7 @@ const jsonContentType = "application/json"
 
 type EventServer struct {
 	Store     storage.EventStore
-	UserStore storage.UserStorage
+	UserStore *storage.UserStorage
 	http.Handler
 }
 
@@ -29,7 +29,7 @@ func NewEventServer(store storage.EventStore) *EventServer {
 	es := new(EventServer)
 
 	es.Store = store
-	es.UserStore = storage.Users
+	es.UserStore = &storage.Users
 
 	privateRouter := http.NewServeMux()
 	privateRouter.HandleFunc("/api/event/", es.ServeEvent)
@@ -55,7 +55,7 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("%#v", r.URL.Query())
 		err := decoder.Decode(&filter, r.URL.Query())
 		if err != nil {
-			log.Fatal("Error in GET parameters : ", err)
+			http.Error(w, "Error in GET parameters", http.StatusBadRequest)
 		} else {
 			log.Println("GET parameters : ", filter)
 		}
@@ -135,7 +135,11 @@ func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id int) 
 }
 
 func (es *EventServer) GetEvent(ctx context.Context, w http.ResponseWriter, id int) {
-	ev := es.Store.GetEventById(ctx, id)
+	ev, err := es.Store.GetEventById(ctx, id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	if ev.ID == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -191,9 +195,10 @@ func (es *EventServer) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   tokenString,
-		Expires: expirationTime,
+		Name:     "token",
+		Value:    tokenString,
+		Expires:  expirationTime,
+		HttpOnly: true,
 	})
 }
 

@@ -9,20 +9,20 @@ import (
 	"strconv"
 )
 
-func NewMetricServer(store storage.EventStore) *EventServer {
+func NewMetricsServer(store storage.EventStore) *EventServer {
 	ms := new(EventServer)
 
 	ms.Store = store
-	ms.UserStore = storage.Users
+	ms.UserStore = &storage.Users
 
 	router := http.NewServeMux()
-	router.HandleFunc("/metric/events", ms.TotalEvents)
-	router.HandleFunc("/metric/users", ms.TotalUsers)
-	router.HandleFunc("/metric/requests_per_s", ms.Empty)
-	router.HandleFunc("/metric/requests_per_s_per_u", ms.Empty)
-	router.HandleFunc("/metric/goroutines", ms.TotalGoroutines)
-	router.HandleFunc("/metric/memory", ms.TotalMemory)
-	router.HandleFunc("/metric/cpu", ms.TotalCPU)
+	router.HandleFunc("/metrics/events", ms.TotalEvents)
+	router.HandleFunc("/metrics/users", ms.TotalUsers)
+	router.HandleFunc("/metrics/requests_per_s", ms.Empty)
+	router.HandleFunc("/metrics/requests_per_s_per_u", ms.Empty)
+	router.HandleFunc("/metrics/goroutines", ms.TotalGoroutines)
+	router.HandleFunc("/metrics/memory", ms.TotalMemory)
+	router.HandleFunc("/metrics/cpu", ms.TotalCPU)
 
 	ms.Handler = router
 
@@ -34,7 +34,7 @@ func (ms *EventServer) Empty(w http.ResponseWriter, r *http.Request) {
 func (ms *EventServer) TotalEvents(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte("Number of events: " + strconv.Itoa(ms.Store.Count())))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -42,7 +42,7 @@ func (ms *EventServer) TotalEvents(w http.ResponseWriter, r *http.Request) {
 func (ms *EventServer) TotalUsers(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte("Number of users: " + strconv.Itoa(ms.UserStore.Count())))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -50,7 +50,7 @@ func (ms *EventServer) TotalUsers(w http.ResponseWriter, r *http.Request) {
 func (ms *EventServer) TotalGoroutines(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte("Number of goroutines: " + strconv.Itoa(runtime.NumGoroutine())))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -62,7 +62,7 @@ func (ms *EventServer) TotalMemory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", jsonContentType)
 	err := json.NewEncoder(w).Encode(m)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -70,7 +70,7 @@ func (ms *EventServer) TotalMemory(w http.ResponseWriter, r *http.Request) {
 func (ms *EventServer) TotalCPU(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte("Number of logical CPUs usable by the current process: " + strconv.Itoa(runtime.NumCPU()) + "\n" + "number of cgo calls made by the current process: " + strconv.Itoa(int(runtime.NumCgoCall()))))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
