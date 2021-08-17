@@ -2,6 +2,7 @@ package storage
 
 import (
 	"calendar/event"
+	"context"
 	"reflect"
 	"sync"
 	"testing"
@@ -56,13 +57,15 @@ func TestGetEventById(t *testing.T) {
 		{"Get event by id 5", *store, args{5}, GetStubEventById(5)},
 		{"Get event by id 6", *store, args{6}, event.Event{}},
 	}
+	ctx := context.WithValue(context.Background(), "timezone", "Europe/Riga")
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			i := &InMemoryEventStorage{
 				store: tt.fields.store,
 				lock:  tt.fields.lock,
 			}
-			if got := i.GetEventById(tt.args.id); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := i.GetEventById(ctx, tt.args.id); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetEventById() = %v, want %v", got, tt.want)
 			}
 		})

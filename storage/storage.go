@@ -11,18 +11,26 @@ import (
 
 const shortForm = "2006-01-02"
 
+// NewEventStorage initialises an empty store
+var once sync.Once
+var instance *InMemoryEventStorage = nil
+
 // EventStore stores information about events
 type EventStore interface {
 	GetEvents(ctx context.Context, ef event.EventFilter) []event.Event
-	GetEventById(ctx context.Context, id int) event.Event
+	GetEventById(ctx context.Context, id int) (event.Event, error)
 	IsExist(id int) bool
 	Delete(id int)
 	Save(ev event.Event)
+	Count() int
 }
 
-// NewEventStorage initialises an empty store
+// NewEventStorage initialises an empty store only one time
 func NewEventStorage() *InMemoryEventStorage {
-	return &InMemoryEventStorage{map[int]event.Event{}, &sync.RWMutex{}}
+	once.Do(func() {
+		instance = &InMemoryEventStorage{map[int]event.Event{}, &sync.RWMutex{}}
+	})
+	return instance
 }
 
 // InMemoryEventStorage collects events to map by id
@@ -33,14 +41,14 @@ type InMemoryEventStorage struct {
 }
 
 // GetEventById return event by id
-func (i *InMemoryEventStorage) GetEventById(ctx context.Context, id int) event.Event {
+func (i *InMemoryEventStorage) GetEventById(ctx context.Context, id int) (event.Event, error) {
 	i.lock.RLock()
 	defer i.lock.RUnlock()
 	ev := i.store[id]
 	fmt.Println(ev)
-	ev.ChangeTimezoneFromContext(ctx)
-	fmt.Println(ev)
-	return ev
+	err := ev.ChangeTimezoneFromContext(ctx)
+
+	return ev, err
 }
 
 // GetEvents return all events as slice
@@ -124,4 +132,11 @@ func (i *InMemoryEventStorage) IsExist(id int) bool {
 	defer i.lock.RUnlock()
 	_, exist := i.store[id]
 	return exist
+}
+
+// Count return number of events in storage
+func (i *InMemoryEventStorage) Count() int {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+	return len(i.store)
 }
