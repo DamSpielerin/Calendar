@@ -1,32 +1,33 @@
 package event
 
 import (
-	"calendar/user"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"time"
 )
 
 type Event struct {
-	ID          int            `json:"id"`
-	Title       string         `json:"title"`
-	Description string         `json:"description"`
-	DateTime    time.Time      `json:"time"`
-	Timezone    *time.Location `json:"timezone,omitempty"`
-	Duration    time.Duration  `json:"duration"`
-	Notes       []string       `json:"notes,omitempty"`
-	ownerUser   *user.User
+	gorm.Model
+	ID          uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Title       string        `json:"title"`
+	Description string        `json:"description"`
+	DateTime    time.Time     `json:"time"`
+	Timezone    string        `json:"timezone,omitempty"`
+	Duration    time.Duration `json:"duration"`
+	Notes       []string      `json:"notes,omitempty"`
 	Unmarshaler
 }
-type EventHelper struct {
-	ID          int      `json:"id"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	DateTime    string   `json:"time"`
-	Timezone    string   `json:"timezone"`
-	Duration    string   `json:"duration"`
-	Notes       []string `json:"notes"`
+type Helper struct {
+	ID          uuid.UUID `json:"id,omitempty"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	DateTime    string    `json:"time"`
+	Timezone    string    `json:"timezone"`
+	Duration    string    `json:"duration"`
+	Notes       []string  `json:"notes"`
 }
 
 type Unmarshaler interface {
@@ -35,18 +36,23 @@ type Unmarshaler interface {
 
 // MarshalJSON convert event to JSON
 func (ev *Event) MarshalJSON() ([]byte, error) {
-	eh := EventHelper{ev.ID, ev.Title, ev.Description, ev.DateTime.Format(longForm), ev.Timezone.String(), ev.Duration.String(), ev.Notes}
+	eh := Helper{ev.ID, ev.Title, ev.Description, ev.DateTime.Format(longForm), ev.Timezone, ev.Duration.String(), ev.Notes}
 	return json.Marshal(eh)
 }
 
 // UnmarshalJSON convert JSON to event
 func (ev *Event) UnmarshalJSON(j []byte) error {
-	var eh EventHelper
+	var eh Helper
 	err := json.Unmarshal(j, &eh)
 	if err != nil {
 		return err
 	}
-	ev.ID = eh.ID
+	if eh.ID != uuid.Nil {
+		ev.ID = eh.ID
+	} else {
+		ev.ID = uuid.New()
+	}
+
 	ev.Title = eh.Title
 	ev.Description = eh.Description
 	ev.Notes = eh.Notes
@@ -58,7 +64,7 @@ func (ev *Event) UnmarshalJSON(j []byte) error {
 	if err != nil || loc == nil {
 		return err
 	}
-	ev.Timezone = loc
+	ev.Timezone = loc.String()
 	ev.DateTime, err = time.ParseInLocation(longForm, eh.DateTime, loc)
 	if err != nil {
 		return err
@@ -77,6 +83,6 @@ func (ev *Event) ChangeTimezoneFromContext(ctx context.Context) error {
 	return nil
 }
 func (ev *Event) ChangeTimezone(loc *time.Location) {
-	ev.Timezone = loc
+	ev.Timezone = loc.String()
 	ev.DateTime = ev.DateTime.In(loc)
 }

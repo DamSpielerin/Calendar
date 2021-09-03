@@ -2,6 +2,7 @@ package storage
 
 import (
 	"calendar/user"
+	"github.com/google/uuid"
 	"sync"
 	"time"
 )
@@ -14,13 +15,13 @@ type UserStorage struct {
 var Users = UserStorage{
 	store: map[string]user.User{
 		"User1": {
-			ID:       1,
+			ID:       uuid.New(),
 			Login:    "User1",
 			Email:    "user@ukr.net",
 			Password: "password1",
 			Timezone: "Europe/Athens",
 		}, "User2": {
-			ID:       2,
+			ID:       uuid.New(),
 			Login:    "User2",
 			Email:    "user2@ukr.net",
 			Password: "password2",
@@ -62,4 +63,15 @@ func (us *UserStorage) Count() int {
 	us.lock.RLock()
 	defer us.lock.RUnlock()
 	return len(us.store)
+}
+
+func (us *UserStorage) GetAll() []user.User {
+	us.lock.RLock()
+	defer us.lock.RUnlock()
+	users := make([]user.User, 0, len(us.store))
+
+	for _, tx := range us.store {
+		users = append(users, tx)
+	}
+	return users
 }

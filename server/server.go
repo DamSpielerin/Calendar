@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/gorilla/schema"
+
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -26,6 +27,7 @@ type EventServer struct {
 }
 
 func NewEventServer(store storage.EventStore) *EventServer {
+
 	es := new(EventServer)
 
 	es.Store = store
@@ -44,7 +46,6 @@ func NewEventServer(store storage.EventStore) *EventServer {
 
 	es.Handler = router
 	es.Handler = PanicMiddleware(es.Handler)
-
 	return es
 }
 
@@ -59,11 +60,14 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Println("GET parameters : ", filter)
 		}
-		evs := es.Store.GetEvents(r.Context(), filter)
+		evs, err := es.Store.GetEvents(r.Context(), filter)
+		if err != nil {
+			http.Error(w, "something bad happen with db", http.StatusInternalServerError)
+		}
 		w.Header().Set("content-type", jsonContentType)
 		err = json.NewEncoder(w).Encode(evs)
 		if err != nil {
-			w.WriteHeader(http.StatusInsufficientStorage)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	} else {
 		http.Error(w, "Wrong Method Used!", http.StatusBadRequest)
@@ -72,7 +76,7 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (es *EventServer) ServeEvent(w http.ResponseWriter, r *http.Request) {
-	eventId, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/event/"))
+	eventId, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/event/"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
@@ -82,7 +86,7 @@ func (es *EventServer) ServeEvent(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		es.GetEvent(r.Context(), w, eventId)
 	case http.MethodDelete:
-		es.DeleteEvent(w, eventId)
+		es.DeleteEvent(r.Context(), w, eventId)
 	}
 }
 
@@ -109,8 +113,12 @@ func (es *EventServer) ServeUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id int) {
-	exists := es.Store.IsExist(id)
+func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id uuid.UUID) {
+	exists, err := es.Store.IsExist(r.Context(), id)
+	if err != nil {
+		http.Error(w, "something wrong happen", http.StatusInternalServerError)
+		return
+	}
 	if (exists && r.Method == http.MethodPost) || (!exists && r.Method == http.MethodPut) {
 		http.Error(w, "Wrong method type", http.StatusBadRequest)
 		return
@@ -126,22 +134,25 @@ func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id int) 
 		http.Error(w, "Wrong entity", http.StatusBadRequest)
 		return
 	}
-	es.Store.Save(ev)
-	if es.Store.IsExist(ev.ID) {
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusNotAcceptable)
+	ev, err = es.Store.Save(r.Context(), ev)
+	if err != nil {
+		http.Error(w, "something wrong happen", http.StatusInternalServerError)
+		return
+	}
+	jsonEvent, err := json.Marshal(&ev)
+	if err != nil {
+		w.WriteHeader(http.StatusInsufficientStorage)
+	}
+	_, err = w.Write(jsonEvent)
+	if err != nil {
+		http.Error(w, "Wrong json response", http.StatusInternalServerError)
 	}
 }
 
-func (es *EventServer) GetEvent(ctx context.Context, w http.ResponseWriter, id int) {
+func (es *EventServer) GetEvent(ctx context.Context, w http.ResponseWriter, id uuid.UUID) {
 	ev, err := es.Store.GetEventById(ctx, id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if ev.ID == 0 {
-		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	w.Header().Set("content-type", jsonContentType)
@@ -155,17 +166,21 @@ func (es *EventServer) GetEvent(ctx context.Context, w http.ResponseWriter, id i
 	}
 }
 
-func (es *EventServer) DeleteEvent(w http.ResponseWriter, id int) {
-	if !es.Store.IsExist(id) {
-		w.WriteHeader(http.StatusNotFound)
+func (es *EventServer) DeleteEvent(ctx context.Context, w http.ResponseWriter, id uuid.UUID) {
+	exist, err := es.Store.IsExist(ctx, id)
+	if err != nil || !exist {
+		http.Error(w, "Wrong json response", http.StatusNotFound)
 		return
 	}
-	es.Store.Delete(id)
+	err = es.Store.Delete(ctx, id)
+	if err != nil {
+		http.Error(w, "something wrong happen", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (es *EventServer) Login(w http.ResponseWriter, r *http.Request) {
 	var creds user.Credentials
-	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -182,6 +197,7 @@ func (es *EventServer) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	expirationTime := time.Now().Add(5 * time.Minute)
 	claims := &user.Claims{
+		ID:       userEntity.ID,
 		Username: creds.Username,
 		Timezone: userEntity.Timezone,
 		StandardClaims: jwt.StandardClaims{
@@ -204,8 +220,9 @@ func (es *EventServer) Login(w http.ResponseWriter, r *http.Request) {
 
 func (es *EventServer) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   "",
-		Expires: time.Now(),
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Now(),
+		HttpOnly: true,
 	})
 }

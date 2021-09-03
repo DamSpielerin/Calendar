@@ -6,11 +6,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/rs/cors"
 	"net/http"
 	"time"
 )
 
 func PanicMiddleware(next http.Handler) http.Handler {
+	handleCORS := cors.Default().Handler
+	next = handleCORS(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("panicMiddleware", r.URL.Path)
 		defer func() {
@@ -28,10 +31,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		c, err := r.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				http.Error(w, "error: no cookie", http.StatusUnauthorized)
+				http.Error(w, "error: not authorized", http.StatusUnauthorized)
 				return
 			}
-			http.Error(w, "error: wrong cookie", http.StatusBadRequest)
+			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 			return
 		}
 		tknStr := c.Value
@@ -42,21 +45,21 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		})
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				http.Error(w, "error: jwt signature is invalid", http.StatusUnauthorized)
+				http.Error(w, "error: not authorized", http.StatusUnauthorized)
 				return
 			}
-			http.Error(w, "error: signature is invalid", http.StatusBadRequest)
+			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 			return
 		}
 
 		if !tkn.Valid {
-			http.Error(w, "error: jwt is invalid", http.StatusUnauthorized)
+			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 			return
 		}
 
 		userEntity, ok := storage.Users.GetUserByLogin(claims.Username)
 		if !ok {
-			http.Error(w, "error: user not found", http.StatusNotFound)
+			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 		}
 
 		if userEntity.Timezone != claims.Timezone {
@@ -75,6 +78,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			})
 		}
 		ctx := context.WithValue(r.Context(), "timezone", userEntity.Timezone)
+		ctx = context.WithValue(r.Context(), "user_id", userEntity.ID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
