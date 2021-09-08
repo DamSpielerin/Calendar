@@ -2,7 +2,9 @@ package storage
 
 import (
 	"calendar/event"
+	"calendar/user"
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -36,6 +38,14 @@ func NewDbStorage(dsn string, idleConn, maxConn int) (*repository, error) {
 
 	once.Do(func() {
 		repo = &repository{db}
+		err = repo.db.AutoMigrate(&event.Event{})
+		if err != nil {
+			return
+		}
+		err = repo.db.AutoMigrate(&user.User{})
+		if err != nil {
+			return
+		}
 	})
 
 	return repo, nil
@@ -43,7 +53,7 @@ func NewDbStorage(dsn string, idleConn, maxConn int) (*repository, error) {
 
 func (i *repository) GetEventById(ctx context.Context, id uuid.UUID) (event.Event, error) {
 	var ev event.Event
-	//i.db.First(&ev, id)
+	i.db.First(&ev, id)
 	//err := ev.ChangeTimezoneFromContext(ctx)
 	return ev, nil
 }
@@ -59,11 +69,19 @@ func (i *repository) Save(ctx context.Context, ev event.Event) (event.Event, err
 	if err != nil {
 		return ev, err
 	}
-	if exist {
-		i.db.Save(&ev)
-	} else {
-		i.db.Create(&ev)
+	if ev.UserId.String() == "00000000-0000-0000-0000-000000000000" {
+		if v := ctx.Value("user_id"); v != nil {
+			ev.UserId = v.(uuid.UUID)
+		}
 	}
+
+	var result *gorm.DB
+	if exist {
+		result = i.db.Save(&ev)
+	} else {
+		result = i.db.Create(&ev)
+	}
+	fmt.Println(result.Error)
 	return ev, nil
 }
 

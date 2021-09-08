@@ -6,14 +6,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/rs/cors"
 	"net/http"
 	"time"
 )
 
 func PanicMiddleware(next http.Handler) http.Handler {
-	handleCORS := cors.Default().Handler
-	next = handleCORS(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("panicMiddleware", r.URL.Path)
 		defer func() {

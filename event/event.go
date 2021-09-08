@@ -11,14 +11,15 @@ import (
 
 type Event struct {
 	gorm.Model
-	ID          uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4()"`
+	ID          uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4();primaryKey;"`
 	Title       string        `json:"title"`
 	Description string        `json:"description"`
-	DateTime    time.Time     `json:"time"`
+	DateTime    time.Time     `json:"time" gorm:"column:time"`
 	Timezone    string        `json:"timezone,omitempty"`
-	Duration    time.Duration `json:"duration"`
-	Notes       []string      `json:"notes,omitempty"`
-	Unmarshaler
+	Duration    time.Duration `json:"duration" gorm:"type:string"`
+	Notes       string        `json:"notes,omitempty" gorm:"type:string"`
+	UserId      uuid.UUID     `json:"-" gorm:"type:uuid	"`
+	Unmarshaler `json:"-" gorm:"-"`
 }
 type Helper struct {
 	ID          uuid.UUID `json:"id,omitempty"`
@@ -27,7 +28,7 @@ type Helper struct {
 	DateTime    string    `json:"time"`
 	Timezone    string    `json:"timezone"`
 	Duration    string    `json:"duration"`
-	Notes       []string  `json:"notes"`
+	Notes       string    `json:"notes"`
 }
 
 type Unmarshaler interface {

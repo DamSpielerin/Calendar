@@ -1,29 +1,22 @@
-CREATE TABLE users (
-      id  BINARY(16) NOT NULL PRIMARY KEY,
-      login VARCHAR(30) NOT NULL,
-      firstname VARCHAR(30) NOT NULL,
-      lastname VARCHAR(30) NOT NULL,
-      timezone VARCHAR(30) NOT NULL DEFAULT 'UTC',
-      password_hash VARCHAR(30) NOT NULL,
-      email VARCHAR(50),
-      role ENUM('ADMIN', 'USER') NOT NULL DEFAULT 'USER',
-      deleted_at TIMESTAMP,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE events (
-     id BINARY(16) NOT NULL PRIMARY KEY,
-     title VARCHAR(100),
-     description VARCHAR(256),
-     time TIMESTAMP NOT NULL,
-     timezone VARCHAR(30) NOT NULL DEFAULT 'UTC',
-     duration  INT(11),
-     notes TEXT,
-     user_id BINARY(16),
-     deleted_at TIMESTAMP,
-     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-     FOREIGN KEY (user_id)
-     REFERENCES users(id)
-     ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE calendar.events (
+                                 id BINARY(16) NOT NULL,
+                                 title VARCHAR(100) DEFAULT NULL,
+                                 description VARCHAR(256) DEFAULT NULL,
+                                 time TIMESTAMP NOT NULL,
+                                 timezone VARCHAR(30) NOT NULL DEFAULT 'UTC',
+                                 duration INT DEFAULT NULL,
+                                 notes TEXT DEFAULT NULL,
+                                 user_id BINARY(16) DEFAULT NULL,
+                                 deleted_at TIMESTAMP NULL DEFAULT NULL,
+                                 created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                 PRIMARY KEY (id)
+)
+    ENGINE = INNODB,
+CHARACTER SET utf8mb4,
+COLLATE utf8mb4_0900_ai_ci;
+
+ALTER TABLE calendar.events
+    ADD CONSTRAINT events_ibfk_1 FOREIGN KEY (user_id)
+        REFERENCES calendar.users(id) ON DELETE CASCADE;

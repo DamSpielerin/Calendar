@@ -149,25 +149,7 @@ paths:
           description: Unathorized access
        '201':
           description: Successfully saved
-    put:
-      tags: 
-       - event
-      summary: Update event
-      description: 'This operation can be done only for loged in users'
-      consumes:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Updated event object
-          required: true
-          schema:
-            $ref: '#/definitions/Event'
-      responses:
-       '401':
-          description: Unathorized access
-       '201':
-          description: Successfully saved
+
   /api/event/{id}:
     get:
       tags: 
@@ -188,7 +170,25 @@ paths:
           description: Successful operation
           schema:
             $ref: '#/definitions/Event'
-            
+    put:
+      tags:
+        - event
+      summary: Update event
+      description: 'This operation can be done only for loged in users'
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Updated event object
+          required: true
+          schema:
+            $ref: '#/definitions/Event'
+      responses:
+        '401':
+          description: Unathorized access
+        '201':
+          description: Successfully saved
 definitions:
   Auth:
     type: object

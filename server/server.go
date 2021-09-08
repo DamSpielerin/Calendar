@@ -10,8 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/schema"
-
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -78,11 +77,11 @@ func (es *EventServer) ServeEvents(w http.ResponseWriter, r *http.Request) {
 func (es *EventServer) ServeEvent(w http.ResponseWriter, r *http.Request) {
 	eventId, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/event/"))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		es.SaveEvent(w, r, uuid.New())
 	}
 	switch r.Method {
-	case http.MethodPost, http.MethodPut:
-		es.SaveEvent(w, *r, eventId)
+	case http.MethodPut:
+		es.SaveEvent(w, r, eventId)
 	case http.MethodGet:
 		es.GetEvent(r.Context(), w, eventId)
 	case http.MethodDelete:
@@ -96,7 +95,7 @@ func (es *EventServer) ServeUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var userEntity user.User
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Wrong body", http.StatusBadRequest)
 		return
@@ -113,7 +112,7 @@ func (es *EventServer) ServeUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id uuid.UUID) {
+func (es *EventServer) SaveEvent(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
 	exists, err := es.Store.IsExist(r.Context(), id)
 	if err != nil {
 		http.Error(w, "something wrong happen", http.StatusInternalServerError)
@@ -124,12 +123,13 @@ func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id uuid.
 		return
 	}
 	var ev event.Event
-	body, err := ioutil.ReadAll(r.Body)
+
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Wrong body", http.StatusBadRequest)
 		return
 	}
-	err = json.Unmarshal(body, &ev)
+	err = ev.UnmarshalJSON(body)
 	if err != nil {
 		http.Error(w, "Wrong entity", http.StatusBadRequest)
 		return
@@ -143,6 +143,8 @@ func (es *EventServer) SaveEvent(w http.ResponseWriter, r http.Request, id uuid.
 	if err != nil {
 		w.WriteHeader(http.StatusInsufficientStorage)
 	}
+	w.Header().Set("content-type", jsonContentType)
+
 	_, err = w.Write(jsonEvent)
 	if err != nil {
 		http.Error(w, "Wrong json response", http.StatusInternalServerError)

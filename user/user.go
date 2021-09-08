@@ -12,7 +12,7 @@ type User struct {
 	ID       uuid.UUID     `json:"id,omitempty"`
 	Login    string        `json:"login"`
 	Email    string        `json:"email,omitempty"`
-	Password string        `json:"password,omitempty"`
+	Password string        `json:"password,omitempty" gorm:"column:password_hash"`
 	Timezone string        `json:"timezone,omitempty"`
 	Events   []event.Event `gorm:"foreignKey:UserId"`
 }
