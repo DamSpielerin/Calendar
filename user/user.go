@@ -9,7 +9,7 @@ import (
 
 type User struct {
 	gorm.Model
-	ID       uuid.UUID     `json:"id,omitempty"`
+	ID       uuid.UUID     `json:"id,omitempty" gorm:"primaryKey;"`
 	Login    string        `json:"login"`
 	Email    string        `json:"email,omitempty"`
 	Password string        `json:"password,omitempty" gorm:"column:password_hash"`

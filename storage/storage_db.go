@@ -4,7 +4,6 @@ import (
 	"calendar/event"
 	"calendar/user"
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -54,8 +53,8 @@ func NewDbStorage(dsn string, idleConn, maxConn int) (*repository, error) {
 func (i *repository) GetEventById(ctx context.Context, id uuid.UUID) (event.Event, error) {
 	var ev event.Event
 	i.db.First(&ev, id)
-	//err := ev.ChangeTimezoneFromContext(ctx)
-	return ev, nil
+	err := ev.ChangeTimezoneFromContext(ctx)
+	return ev, err
 }
 
 // GetEvents return all events as slice
@@ -81,21 +80,23 @@ func (i *repository) Save(ctx context.Context, ev event.Event) (event.Event, err
 	} else {
 		result = i.db.Create(&ev)
 	}
-	fmt.Println(result.Error)
-	return ev, nil
+	return ev, result.Error
 }
 
 // Delete event from store
 func (i *repository) Delete(ctx context.Context, id uuid.UUID) error {
-	return nil
+	result := i.db.Delete(&event.Event{}, id)
+	return result.Error
 }
 
 // IsExist check if event already in store
 func (i *repository) IsExist(ctx context.Context, id uuid.UUID) (bool, error) {
-	return false, nil
+	var ev event.Event
+	result := i.db.First(&ev, id)
+	return result.RowsAffected > 0, result.Error
 }
 
 // Count return number of events in storage
 func (i *repository) Count(ctx context.Context) (int, error) {
-	return 1, nil
+	return 0, nil
 }

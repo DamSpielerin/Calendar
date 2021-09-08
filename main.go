@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	store, err := storage.NewDbStorage("root:123456@tcp(127.0.0.1:3306)/calendar?charset=utf8mb4", 60, 10)
+	store, err := storage.NewDbStorage("root:123456@tcp(127.0.0.1:3307)/calendar?charset=utf8mb4", 60, 10)
 	if err != nil {
 		log.Fatal("can't connect to db: ", err)
 	}

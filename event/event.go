@@ -11,14 +11,14 @@ import (
 
 type Event struct {
 	gorm.Model
-	ID          uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4();primaryKey;"`
+	ID          uuid.UUID     `gorm:"primaryKey;"`
 	Title       string        `json:"title"`
 	Description string        `json:"description"`
 	DateTime    time.Time     `json:"time" gorm:"column:time"`
 	Timezone    string        `json:"timezone,omitempty"`
 	Duration    time.Duration `json:"duration" gorm:"type:string"`
 	Notes       string        `json:"notes,omitempty" gorm:"type:string"`
-	UserId      uuid.UUID     `json:"-" gorm:"type:uuid	"`
+	UserId      uuid.UUID     `json:"-"`
 	Unmarshaler `json:"-" gorm:"-"`
 }
 type Helper struct {
