@@ -1,27 +1,28 @@
 package server
 
 import (
-	"calendar/event"
-	"calendar/storage"
-	"calendar/user"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
-	"github.com/gorilla/schema"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"calendar/event"
+	"calendar/storage"
+	"calendar/user"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
+	"github.com/gorilla/schema"
 )
 
 const jsonContentType = "application/json"
 
 type EventServer struct {
-	Store     storage.EventStore
-	UserStore *storage.UserStorage
+	Store storage.EventStore
 	http.Handler
 }
 
@@ -30,7 +31,6 @@ func NewEventServer(store storage.EventStore) *EventServer {
 	es := new(EventServer)
 
 	es.Store = store
-	es.UserStore = &storage.Users
 
 	privateRouter := http.NewServeMux()
 	privateRouter.HandleFunc("/api/event/", es.ServeEvent)
@@ -42,6 +42,7 @@ func NewEventServer(store storage.EventStore) *EventServer {
 	router.Handle("/api/", privatHandler)
 	router.HandleFunc("/login", es.Login)
 	router.HandleFunc("/logout", es.Logout)
+	router.HandleFunc("/signup", es.Signup)
 
 	es.Handler = router
 	es.Handler = PanicMiddleware(es.Handler)
@@ -105,7 +106,7 @@ func (es *EventServer) ServeUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Wrong entity", http.StatusBadRequest)
 		return
 	}
-	err = es.UserStore.UpdateTimezone(userEntity.Login, userEntity.Timezone)
+	err = es.Store.UpdateTimezone(r.Context(), userEntity.Login, userEntity.Timezone)
 	if err != nil {
 		http.Error(w, "Wrong Timezone", http.StatusBadRequest)
 		return
@@ -188,12 +189,17 @@ func (es *EventServer) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	userEntity, ok := storage.Users.GetUserByLogin(creds.Username)
-
-	if !ok || userEntity.Password != creds.Password {
+	userEntity, ok, err := es.Store.GetUserByLogin(creds.Username)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ok = ok && creds.PasswordVerify(userEntity.PasswordHash)
+	if !ok || err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
 	if userEntity.Timezone == "" {
 		userEntity.Timezone = "UTC"
 	}
@@ -227,4 +233,57 @@ func (es *EventServer) Logout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now(),
 		HttpOnly: true,
 	})
+}
+
+func (es *EventServer) Signup(w http.ResponseWriter, r *http.Request) {
+	var creds user.Credentials
+	err := json.NewDecoder(r.Body).Decode(&creds)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	passwordHash, err := creds.PasswordHash()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	userEntity := user.User{
+		ID:           uuid.New(),
+		Login:        creds.Username,
+		Email:        creds.Email,
+		PasswordHash: passwordHash,
+		Timezone:     creds.Timezone,
+	}
+	if userEntity.Timezone == "" {
+		userEntity.Timezone = "UTC"
+	}
+
+	err = es.Store.CreateUser(userEntity)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	expirationTime := time.Now().Add(5 * time.Minute)
+	claims := &user.Claims{
+		ID:       userEntity.ID,
+		Username: creds.Username,
+		Timezone: userEntity.Timezone,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(user.JwtKey)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    tokenString,
+		Expires:  expirationTime,
+		HttpOnly: true,
+	})
+
 }

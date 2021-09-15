@@ -1,20 +1,19 @@
 package server
 
 import (
-	"calendar/storage"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"runtime"
 	"strconv"
+
+	"calendar/storage"
 )
 
 func NewMetricsServer(store storage.EventStore) *EventServer {
 	ms := new(EventServer)
 
 	ms.Store = store
-	ms.UserStore = &storage.Users
-
 	router := http.NewServeMux()
 	router.HandleFunc("/metrics/events", ms.TotalEvents)
 	router.HandleFunc("/metrics/users", ms.TotalUsers)
@@ -32,12 +31,9 @@ func (ms *EventServer) Empty(w http.ResponseWriter, r *http.Request) {
 
 }
 func (ms *EventServer) TotalEvents(w http.ResponseWriter, r *http.Request) {
-	cnt, err := ms.Store.Count(r.Context())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = w.Write([]byte("Number of events: " + strconv.Itoa(cnt)))
+	cnt := ms.Store.Count()
+
+	_, err := w.Write([]byte("Number of events: " + strconv.Itoa(cnt)))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -45,7 +41,7 @@ func (ms *EventServer) TotalEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ms *EventServer) TotalUsers(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("Number of users: " + strconv.Itoa(ms.UserStore.Count())))
+	_, err := w.Write([]byte("Number of users: " + strconv.Itoa(ms.Store.UsersCount())))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
