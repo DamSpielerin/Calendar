@@ -3,10 +3,12 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Event struct {
@@ -26,9 +28,9 @@ type Helper struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	DateTime    string    `json:"time"`
-	Timezone    string    `json:"timezone"`
+	Timezone    string    `json:"timezone,omitempty"`
 	Duration    string    `json:"duration"`
-	Notes       string    `json:"notes"`
+	Notes       string    `json:"notes,omitempty"`
 }
 
 type Unmarshaler interface {
@@ -80,9 +82,11 @@ func (ev *Event) ChangeTimezoneFromContext(ctx context.Context) error {
 			return fmt.Errorf("can't change timezone from context")
 		}
 		ev.ChangeTimezone(loc)
+		return nil
 	}
-	return nil
+	return errors.New("user have no timezone")
 }
+
 func (ev *Event) ChangeTimezone(loc *time.Location) {
 	ev.Timezone = loc.String()
 	ev.DateTime = ev.DateTime.In(loc)

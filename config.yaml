@@ -1,0 +1,6 @@
+port: 3306
+user: root
+password: 123456
+hoast: 127.0.0.1
+idle: 60
+pool: 10

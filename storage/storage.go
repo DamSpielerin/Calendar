@@ -1,12 +1,14 @@
 package storage
 
 import (
-	"calendar/event"
 	"context"
-	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
+
+	"calendar/event"
+
+	"github.com/google/uuid"
 )
 
 const shortForm = "2006-01-02"
@@ -22,7 +24,8 @@ type EventStore interface {
 	IsExist(ctx context.Context, id uuid.UUID) (bool, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	Save(ctx context.Context, ev event.Event) (event.Event, error)
-	Count(ctx context.Context) (int, error)
+	Count() int
+	UserStore
 }
 
 // NewEventStorage initialises an empty store only one time
