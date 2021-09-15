@@ -5,6 +5,7 @@ import (
 	"calendar/event"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/magiconair/properties/assert"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,7 @@ import (
 )
 
 type StubEventStorage struct {
-	store map[int]event.Event
+	store map[uuid.UUID]event.Event
 	lock  sync.RWMutex
 }
 
@@ -29,16 +30,16 @@ func (s *StubEventStorage) GetEvents(ef event.EventFilter) []event.Event {
 	return evs
 }
 
-func (s *StubEventStorage) GetEventById(id int) event.Event {
-	return getStubEventById(id)
+func (s *StubEventStorage) GetEventById(id uuid.UUID) event.Event {
+	return getStubEventById(int(id.ID()))
 }
 
-func (s *StubEventStorage) IsExist(id int) bool {
+func (s *StubEventStorage) IsExist(id uuid.UUID) bool {
 	_, exist := s.store[id]
 	return exist
 }
 
-func (s *StubEventStorage) Delete(id int) {
+func (s *StubEventStorage) Delete(id uuid.UUID) {
 	delete(s.store, id)
 }
 
@@ -98,22 +99,31 @@ func NewStubEventStorage() *StubEventStorage {
 	return &StubEventStorage{FillNewStubEvents(), sync.RWMutex{}}
 }
 
-func FillNewStubEvents() map[int]event.Event {
-	s := map[int]event.Event{}
+func FillNewStubEvents() map[uuid.UUID]event.Event {
+	s := map[uuid.UUID]event.Event{}
 	for i := 1; i <= 5; i++ {
-		s[i] = getStubEventById(i)
+		s[createUUIDFromInt(i)] = getStubEventById(i)
 	}
 	return s
 }
-
+func createUUIDFromInt(i int) uuid.UUID {
+	arr := make([]byte, 16)
+	arr[16] = byte(i)
+	id, err := uuid.FromBytes(arr)
+	if err != nil {
+		panic("cant create uuid")
+	}
+	return id
+}
 func getStubEventById(i int) event.Event {
 	loc, _ := time.LoadLocation("America/New_York")
+	id := createUUIDFromInt(i)
 	return event.Event{
-		ID:          i,
+		ID:          id,
 		Title:       fmt.Sprintf("Test title %d", i),
 		Description: "Some description",
 		DateTime:    time.Date(2021, time.August, i, i, i, i, 0, loc),
-		Timezone:    loc,
+		Timezone:    loc.String(),
 		Duration:    time.Hour,
 		Notes:       []string{"test note", "test note2"},
 		Unmarshaler: nil,

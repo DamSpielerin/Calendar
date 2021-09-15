@@ -32,7 +32,12 @@ func (ms *EventServer) Empty(w http.ResponseWriter, r *http.Request) {
 
 }
 func (ms *EventServer) TotalEvents(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("Number of events: " + strconv.Itoa(ms.Store.Count())))
+	cnt, err := ms.Store.Count(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write([]byte("Number of events: " + strconv.Itoa(cnt)))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

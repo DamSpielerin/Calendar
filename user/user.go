@@ -1,13 +1,20 @@
 package user
 
-import "github.com/dgrijalva/jwt-go"
+import (
+	"calendar/event"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type User struct {
-	ID       int    `json:"id,omitempty"`
-	Login    string `json:"login"`
-	Email    string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
-	Timezone string `json:"timezone,omitempty"`
+	gorm.Model
+	ID       uuid.UUID     `json:"id,omitempty" gorm:"primaryKey;"`
+	Login    string        `json:"login"`
+	Email    string        `json:"email,omitempty"`
+	Password string        `json:"password,omitempty" gorm:"column:password_hash"`
+	Timezone string        `json:"timezone,omitempty"`
+	Events   []event.Event `gorm:"foreignKey:UserId"`
 }
 
 // Create the JWT key used to create the signature
@@ -22,7 +29,8 @@ type Credentials struct {
 
 // Create a struct that will be encoded to a JWT.
 type Claims struct {
-	Username string `json:"username"`
-	Timezone string `json:"timezone"`
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Timezone string    `json:"timezone"`
 	jwt.StandardClaims
 }
