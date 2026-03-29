@@ -1,13 +1,16 @@
 package server
 
 import (
-	"calendar/storage"
-	"calendar/user"
 	"context"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"net/http"
 	"time"
+
+	"calendar/storage"
+	"calendar/user"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gookit/config"
 )
 
 func PanicMiddleware(next http.Handler) http.Handler {
@@ -53,9 +56,19 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 			return
 		}
-
-		userEntity, ok := storage.Users.GetUserByLogin(claims.Username)
-		if !ok {
+		idle := config.Int("idle")
+		pool := config.Int("port")
+		port := config.Int("port")
+		userDb := config.String("user")
+		password := config.String("password")
+		host := config.String("host")
+		db, err := storage.NewDbStorage(fmt.Sprintf("%s:%s@tcp(%S:%d)/calendar?charset=utf8mb4&parseTime=true", userDb, password, host, port), idle, pool)
+		if err != nil {
+			http.Error(w, "error: can't connect db", http.StatusInternalServerError)
+			return
+		}
+		userEntity, ok, err := db.GetUserByLogin(claims.Username)
+		if err != nil || !ok {
 			http.Error(w, "error: not authorized", http.StatusUnauthorized)
 		}
 
@@ -75,7 +88,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			})
 		}
 		ctx := context.WithValue(r.Context(), "timezone", userEntity.Timezone)
-		ctx = context.WithValue(r.Context(), "user_id", userEntity.ID)
+		ctx = context.WithValue(ctx, "user_id", userEntity.ID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

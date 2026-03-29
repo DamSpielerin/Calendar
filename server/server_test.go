@@ -2,17 +2,19 @@ package server
 
 import (
 	"bytes"
-	"calendar/event"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/magiconair/properties/assert"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"calendar/event"
+
+	"github.com/google/uuid"
+	"github.com/magiconair/properties/assert"
 )
 
 type StubEventStorage struct {

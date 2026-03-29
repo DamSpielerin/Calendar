@@ -2,19 +2,21 @@ package user
 
 import (
 	"calendar/event"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type User struct {
 	gorm.Model
-	ID       uuid.UUID     `json:"id,omitempty" gorm:"primaryKey;"`
-	Login    string        `json:"login"`
-	Email    string        `json:"email,omitempty"`
-	Password string        `json:"password,omitempty" gorm:"column:password_hash"`
-	Timezone string        `json:"timezone,omitempty"`
-	Events   []event.Event `gorm:"foreignKey:UserId"`
+	ID           uuid.UUID     `json:"id,omitempty" gorm:"primaryKey;"`
+	Login        string        `json:"login"`
+	Email        string        `json:"email,omitempty"`
+	PasswordHash string        `json:"password,omitempty" gorm:"column:password_hash"`
+	Timezone     string        `json:"timezone,omitempty"`
+	Events       []event.Event `gorm:"foreignKey:UserId"`
 }
 
 // Create the JWT key used to create the signature
@@ -25,6 +27,7 @@ type Credentials struct {
 	Password string `json:"password"`
 	Username string `json:"username"`
 	Timezone string `json:"timezone,omitempty"`
+	Email    string `json:"email,omitempty""`
 }
 
 // Create a struct that will be encoded to a JWT.
@@ -33,4 +36,15 @@ type Claims struct {
 	Username string    `json:"username"`
 	Timezone string    `json:"timezone"`
 	jwt.StandardClaims
+}
+
+//PasswordHash create
+func (cred *Credentials) PasswordHash() (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(cred.Password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+func (cred *Credentials) PasswordVerify(hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(cred.Password))
+	return err == nil
 }

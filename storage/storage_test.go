@@ -1,12 +1,13 @@
 package storage
 
 import (
-	"calendar/event"
 	"context"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"calendar/event"
 )
 
 type StubEventStorage struct {
@@ -36,7 +37,7 @@ func TestIsExist(t *testing.T) {
 				lock:  tt.fields.lock,
 			}
 			if got := i.IsExist(tt.args.id); got != tt.want {
-				t.Errorf("IsExist() = %v, want %v", got, tt.want)
+				t.Errorf("IsUserExist() = %v, want %v", got, tt.want)
 			}
 		})
 	}
